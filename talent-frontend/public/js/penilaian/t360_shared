@@ -1,0 +1,86 @@
+/*
+  File bersama untuk:
+   - Master Penilaian (master_index / master_create) : tempat menyusun komponen & pertanyaan
+   - Form Penilaian 360 (transaksi_360_create)       : membaca pertanyaan dari master
+
+  Data master disimpan di browser (localStorage) dengan kunci 't360_master'.
+  Bentuk satu data master:
+  {
+    id, sbu, sub, branch, level, divisi,
+    tipe_penilaian, deskripsi, status: 'Active' | 'InActive',
+    indicators: [ { nama_indicator, kategori, bobot, details: [ {nilai: 5..1, keterangan} ] } ]
+  }
+*/
+(function () {
+  const MASTER_KEY = 't360_master'
+  const KAT = 'Komponen Penilaian / KPI'
+
+  const det = (arr) => arr.map((keterangan, k) => ({ nilai: 5 - k, keterangan }))
+
+  // Data awal (contoh)
+  function seedMasters() {
+    const q = [
+      {
+        n: 'Bagaimana penilaian Anda terhadap individu dalam penetapan target kerja yang tinggi?', b: 3,
+        d: ['Selalu menetapkan target kerja yang sangat tinggi dan menantang untuk dirinya', 'Sering menetapkan target kerja yang tinggi untuk dirinya', 'Menetapkan target kerja yang cukup sesuai tuntutan pekerjaan', 'Kurang menetapkan target kerja yang tinggi, hanya mengikuti target minimum', 'Tidak pernah menetapkan target kerja sendiri']
+      },
+      {
+        n: 'Bagaimana kemampuan individu dalam bekerja sama dengan tim?', b: 2,
+        d: ['Selalu aktif membangun kerja sama dan membantu rekan tim', 'Sering bekerja sama dengan baik bersama tim', 'Dapat bekerja sama jika diperlukan', 'Kurang aktif dalam kerja sama tim', 'Sulit bekerja sama dengan tim']
+      },
+      {
+        n: 'Bagaimana individu berkomunikasi dengan atasan, rekan, dan bawahan?', b: 2,
+        d: ['Selalu berkomunikasi dengan jelas, terbuka, dan tepat waktu', 'Sering berkomunikasi dengan jelas dan terbuka', 'Komunikasi cukup baik untuk kebutuhan pekerjaan', 'Kurang jelas dalam menyampaikan informasi', 'Sulit berkomunikasi dan sering menimbulkan salah paham']
+      },
+      {
+        n: 'Bagaimana individu menyelesaikan masalah dan mengambil keputusan?', b: 3,
+        d: ['Selalu menyelesaikan masalah dengan cepat dan keputusan tepat', 'Sering mengambil keputusan yang baik', 'Mampu menyelesaikan masalah umum dengan arahan', 'Kurang tegas dan sering menunda keputusan', 'Tidak mampu menyelesaikan masalah secara mandiri']
+      }
+    ]
+    const ind = (idxs) => idxs.map((i) => ({ nama_indicator: q[i].n, kategori: KAT, bobot: q[i].b, details: det(q[i].d) }))
+    return [
+      { id: 1, sbu: 'HOLDING', sub: 'HOLDING', branch: 'HOLDING', level: 'Direktur Holding', divisi: 'Information Technology', tipe_penilaian: 'Kompetensi SoftSkill', deskripsi: 'Penilaian Direktur', status: 'Active', indicators: ind([0, 1, 2, 3]) },
+      { id: 2, sbu: 'HOLDING', sub: 'HOLDING', branch: 'HOLDING', level: 'Manager', divisi: 'Information Technology', tipe_penilaian: 'Kompetensi SoftSkill', deskripsi: 'Penilaian Manager', status: 'Active', indicators: ind([0, 1, 2, 3]) },
+      { id: 3, sbu: 'HOLDING', sub: 'HOLDING', branch: 'HOLDING', level: 'Staff', divisi: 'HRD', tipe_penilaian: 'KPI', deskripsi: 'KPI Staff', status: 'Active', indicators: ind([0, 3]) }
+    ]
+  }
+
+  function getMasters() {
+    try {
+      const r = JSON.parse(localStorage.getItem(MASTER_KEY))
+      if (Array.isArray(r)) return r
+    } catch (e) { /* abaikan */ }
+    const s = seedMasters()
+    localStorage.setItem(MASTER_KEY, JSON.stringify(s))
+    return s
+  }
+  function setMasters(rows) {
+    localStorage.setItem(MASTER_KEY, JSON.stringify(rows))
+  }
+
+  // Dipakai form 360: daftar pertanyaan dari semua master yang Active
+  function getKomponen() {
+    const out = []
+    let id = 1
+    getMasters()
+      .filter((m) => String(m.status) === 'Active' || String(m.status) === '1')
+      .forEach((m) => {
+        ;(m.indicators || []).forEach((i) => {
+          out.push({
+            id: id++,
+            master_id: m.id,
+            tipe_penilaian: m.tipe_penilaian,
+            penilaian: m.deskripsi,
+            kategori: i.kategori || KAT,
+            pertanyaan: i.nama_indicator,
+            bobot: Number(i.bobot) || 1,
+            options: (i.details || []).map((d) => ({ nilai: Number(d.nilai), text: d.keterangan })),
+            is_active: 1
+          })
+        })
+      })
+    return out
+  }
+
+  window.T360 = { MASTER_KEY, KAT, getMasters, setMasters, getKomponen }
+})()

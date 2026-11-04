@@ -454,3 +454,58 @@ app.delete('/api/m_menu/:id', (req, res) => {
     masterMenuData = masterMenuData.filter(d => d.id != req.params.id);
     res.json({ status: 'success', message: 'Menu berhasil dihapus' });
 });
+
+// -------------------------------------------------------------
+// Transaksi 360 : detail, simpan, ubah, hapus, post
+// -------------------------------------------------------------
+const t360Fields = ['employee_id','penilai_id','master_assessment_id','periode','hubungan_penilai','tanggal','total_nilai',
+                    'nama','nama_jabatan','nama_divisi','nama_level','tipe_penilaian','penilaian',
+                    'catatan_1','catatan_2','catatan_3','catatan_4'];
+const t360Values = (b) => [...t360Fields.map(f => (b[f] === '' || b[f] === undefined ? null : b[f])), JSON.stringify(b.details || [])];
+
+app.get('/api/transaction-360/:id', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM transaction_360 WHERE id = ?', [req.params.id]);
+        if (!rows.length) return res.status(404).json({ status: 'error', message: 'Data tidak ditemukan' });
+        res.json({ status: 'success', data: rows[0] });
+    } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
+});
+
+app.post('/api/transaction-360', async (req, res) => {
+    try {
+        const cols = [...t360Fields, 'detail_json'];
+        const [r] = await pool.query(
+            `INSERT INTO transaction_360 (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`,
+            t360Values(req.body)
+        );
+        res.json({ status: 'success', message: 'Data Penilaian 360 berhasil disimpan', id: r.insertId });
+    } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
+});
+
+app.put('/api/transaction-360/:id', async (req, res) => {
+    try {
+        const sets = [...t360Fields, 'detail_json'].map(c => `${c} = ?`).join(',');
+        const [r] = await pool.query(
+            `UPDATE transaction_360 SET ${sets} WHERE id = ? AND status = 'DRAFT'`,
+            [...t360Values(req.body), req.params.id]
+        );
+        if (!r.affectedRows) return res.status(400).json({ status: 'error', message: 'Data tidak ditemukan atau sudah POSTED' });
+        res.json({ status: 'success', message: 'Data Penilaian 360 berhasil diperbarui' });
+    } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
+});
+
+app.delete('/api/transaction-360/:id', async (req, res) => {
+    try {
+        const [r] = await pool.query(`DELETE FROM transaction_360 WHERE id = ? AND status = 'DRAFT'`, [req.params.id]);
+        if (!r.affectedRows) return res.status(400).json({ status: 'error', message: 'Data tidak ditemukan atau sudah POSTED' });
+        res.json({ status: 'success', message: 'Data berhasil dihapus' });
+    } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
+});
+
+app.post('/api/transaction-360/post', async (req, res) => {
+    try {
+        const [r] = await pool.query(`UPDATE transaction_360 SET status = 'POSTED' WHERE id = ? AND status = 'DRAFT'`, [req.body.id]);
+        if (!r.affectedRows) return res.status(400).json({ status: 'error', message: 'Data tidak ditemukan atau sudah POSTED' });
+        res.json({ status: 'success', message: 'Data berhasil di-post' });
+    } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
+});

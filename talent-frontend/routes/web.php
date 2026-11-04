@@ -59,10 +59,39 @@ Route::prefix('penilaian-360')->group(function () {
     });
     
     // (Opsional) Persiapan jika nanti ada form create untuk 360
-    // Route::get('/create', function () {
-    //     return view('penilaian.transaksi_360_create');
-    // });
+    Route::get('/create', function () {
+        return view('penilaian.transaksi_360_create');
+    });
 
+});
+
+Route::prefix('master_menu')->group(function () {
+    Route::get('/', function () {
+        return view('master.master_menu');
+    });
+    Route::get('/create', function () {
+        return view('master.master_menu');
+    });
+    Route::get('/{id}', function () {
+        return view('master.master_menu');
+    });
+}); 
+
+// Route Group: Master Fingerprint Machine
+Route::prefix('master_fingerprint')->group(function () {
+    Route::get('/', function () {
+        return view('master.master_fingerprint');
+    });
+    Route::get('/create', function () {
+        return view('master.master_fingerprint');
+    });
+    Route::get('/{id}', function () {
+        return view('master.master_fingerprint');
+    });
+});
+
+Route::get('/penilaian-summary', function () {
+    return view('penilaian.summary');
 });
 
 Route::get('/notification', function () {
