@@ -91,7 +91,7 @@
         </div>
         <div class="d-flex gap-2">
             <input type="text" id="searchUser" class="form-control form-control-sm bg-white text-dark" placeholder="Cari Karyawan..." style="width: 200px;" oninput="filterUserTable(this.value)">
-            <button class="btn btn-light btn-sm px-3 text-dark fw-medium" onclick="loadUserSummaryData()">
+            <button class="btn btn-light btn-sm px-3 text-dark fw-medium" onclick="loadSummaryFromApi()">
                 <i class="fas fa-sync-alt me-1"></i> Refresh
             </button>
         </div>
@@ -204,95 +204,31 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Data Dummy Komprehensif per User & Multi Penilai
-    const dummyUserSummary = [
-        {
-            id: 1,
-            nama_karyawan: 'Syifa Mauliddia',
-            jabatan: 'Fullstack Developer Intern',
-            divisi: 'Information Technology',
-            level: 'Staff',
-            evaluators: [
-                {
-                    id_ev: 101,
-                    nama: 'Ahmad (Manager)',
-                    hubungan: 'Atasan Langsung',
-                    skor_rata: 85,
-                    komponen: [
-                        {
-                            pertanyaan: 'Bagaimana penilaian Anda terhadap individu dalam penetapan target kerja yang tinggi?',
-                            bobot: 3,
-                            rating: 4,
-                            nilai: 12,
-                            pilihan: [
-                                'Selalu menetapkan target kerja yang sangat tinggi dan menantang untuk dirinya',
-                                'Sering menetapkan target kerja yang tinggi untuk dirinya',
-                                'Menetapkan target kerja yang cukup sesuai tuntutan pekerjaan',
-                                'Kurang menetapkan target kerja yang tinggi, hanya mengikuti target minimum',
-                                'Tidak pernah menetapkan target kerja sendiri'
-                            ],
-                            selected_index: 1 
-                        }
-                    ]
-                },
-                {
-                    id_ev: 102,
-                    nama: 'Budi (Peer)',
-                    hubungan: 'Rekan Kerja',
-                    skor_rata: 80,
-                    komponen: [
-                        {
-                            pertanyaan: 'Bagaimana penilaian Anda terhadap individu dalam penetapan target kerja yang tinggi?',
-                            bobot: 3,
-                            rating: 4,
-                            nilai: 12,
-                            pilihan: [
-                                'Selalu menetapkan target kerja yang sangat tinggi dan menantang untuk dirinya',
-                                'Sering menetapkan target kerja yang tinggi untuk dirinya',
-                                'Menetapkan target kerja yang cukup sesuai tuntutan pekerjaan',
-                                'Kurang menetapkan target kerja yang tinggi, hanya mengikuti target minimum',
-                                'Tidak pernah menetapkan target kerja sendiri'
-                            ],
-                            selected_index: 2
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            id: 2,
-            nama_karyawan: 'Andi Pratama',
-            jabatan: 'Data Analyst',
-            divisi: 'Business Intelligence',
-            level: 'Staff',
-            evaluators: [
-                {
-                    id_ev: 201,
-                    nama: 'Ahmad (Manager)',
-                    hubungan: 'Atasan Langsung',
-                    skor_rata: 75,
-                    komponen: [
-                        {
-                            pertanyaan: 'Bagaimana penilaian Anda terhadap individu dalam penetapan target kerja yang tinggi?',
-                            bobot: 3,
-                            rating: 3,
-                            nilai: 9,
-                            pilihan: [
-                                'Selalu menetapkan target kerja yang sangat tinggi dan menantang untuk dirinya',
-                                'Sering menetapkan target kerja yang tinggi untuk dirinya',
-                                'Menetapkan target kerja yang cukup sesuai tuntutan pekerjaan',
-                                'Kurang menetapkan target kerja yang tinggi, hanya mengikuti target minimum',
-                                'Tidak pernah menetapkan target kerja sendiri'
-                            ],
-                            selected_index: 2
-                        }
-                    ]
-                }
-            ]
-        }
-    ];
+    // Data summary dimuat dari backend (talent_db)
+    var dummyUserSummary = [];
 
-    let activeSelectedUser = null;
+    async function loadSummaryFromApi() {
+        const tbody = document.getElementById('userSummaryTableBody');
+        try {
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">Memuat data...</td></tr>`;
+            }
+            const res = await fetch('http://localhost:3000/api/penilaian-summary');
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || json.status !== 'success') {
+                throw new Error(json.message || 'Gagal mengambil data summary');
+            }
+            dummyUserSummary = Array.isArray(json.data) ? json.data : [];
+            loadUserSummaryData();
+        } catch (err) {
+            console.error('Gagal memuat summary penilaian:', err);
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">Gagal memuat data summary: ${err.message}</td></tr>`;
+            }
+        }
+    }
+
+    var activeSelectedUser = null;
 
     function loadUserSummaryData(filter = '') {
         const tbody = document.getElementById('userSummaryTableBody');
@@ -429,6 +365,15 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => loadUserSummaryData());
+    function initSummaryPage() {
+        if (!document.getElementById('userSummaryTableBody')) return;
+        loadSummaryFromApi();
+    }
+
+    if (window.registerPageInit) {
+        window.registerPageInit(initSummaryPage);
+    } else {
+        document.addEventListener('DOMContentLoaded', initSummaryPage);
+    }
 </script>
 @endpush

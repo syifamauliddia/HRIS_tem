@@ -78,9 +78,16 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    function initMasterIndexPage() {
+        if (!document.getElementById('masterTableBody')) return;
         loadMasterData();
-    });
+    }
+
+    if (window.registerPageInit) {
+        window.registerPageInit(initMasterIndexPage);
+    } else {
+        document.addEventListener('DOMContentLoaded', initMasterIndexPage);
+    }
 
     // Mengambil data dari Backend Node.js
     async function loadMasterData() {

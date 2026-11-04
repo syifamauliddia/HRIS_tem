@@ -314,22 +314,37 @@
         updateActionButtonsVisibility();
 
         try {
+            // Ambil dari API dengan filter status & pencarian.
+            const params = new URLSearchParams();
+            if (currentFilterStatus !== null) params.set('is_active', currentFilterStatus ? '1' : '0');
+            if (searchQuery) params.set('search', searchQuery);
+            const url = params.toString() ? `${API_URL}?${params.toString()}` : API_URL;
+
+            const res = await fetch(url);
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || (json.status && json.status !== 'success')) {
+                throw new Error(json.message || 'Gagal mengambil data fingerprint');
+            }
+
+            allData = Array.isArray(json.data) ? json.data : [];
+            renderTable(allData);
+        } catch (err) {
+            // Fallback lokal: tetap filter dataset yang ada di browser.
+            console.error('Error loading data from API, using local fallback', err);
             let filtered = [...allData];
-            
+
             if (currentFilterStatus !== null) {
-                filtered = filtered.filter(item => Boolean(item.is_active) === currentFilterStatus);
+                filtered = filtered.filter(item => Boolean(Number(item.is_active)) === currentFilterStatus);
             }
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
-                filtered = filtered.filter(item => 
-                    item.kode.toLowerCase().includes(q) ||
-                    item.nama.toLowerCase().includes(q) ||
-                    item.id_machine.toLowerCase().includes(q)
+                filtered = filtered.filter(item =>
+                    String(item.kode || '').toLowerCase().includes(q) ||
+                    String(item.nama || '').toLowerCase().includes(q) ||
+                    String(item.id_machine || '').toLowerCase().includes(q)
                 );
             }
             renderTable(filtered);
-        } catch (err) {
-            console.error('Error loading data', err);
         }
     }
 
@@ -446,13 +461,22 @@
         Swal.fire({
             icon: 'warning', text: 'Hapus Mesin Fingerprint ini?',
             showCancelButton: true, confirmButtonText: 'Yes', confirmButtonColor: '#dc3545',
-        }).then((result) => {
-            if (result.isConfirmed) {
+        }).then(async (result) => {
+            if (!result.isConfirmed) return;
+            try {
+                const res = await fetch(`${API_URL}/${row.id}`, { method: 'DELETE' });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok || (json.status && json.status !== 'success')) {
+                    throw new Error(json.message || 'Gagal menghapus data');
+                }
                 allData = allData.filter(d => d.id != row.id);
                 selectedRowId = null;
                 updateActionButtonsVisibility();
                 loadTableData();
                 Swal.fire({ icon: 'success', text: 'Data dihapus', timer: 1500, showConfirmButton: false });
+            } catch (err) {
+                console.error('Gagal menghapus data:', err);
+                Swal.fire({ icon: 'error', text: 'Gagal menghapus data: ' + err.message });
             }
         });
     }
@@ -593,9 +617,10 @@
         });
     }
 
-    function submitForm() {
+    async function submitForm() {
         const mode = document.getElementById('formMode').value;
         const id = document.getElementById('formId').value;
+        const isEdit = mode === 'edit' && id;
         const payload = {
             kode: document.getElementById('inputKode').value,
             id_machine: document.getElementById('inputIdMachine').value,
@@ -603,19 +628,35 @@
             is_active: document.getElementById('inputStatus').checked ? 1 : 0
         };
 
-        if (mode === 'edit' && id) {
-            const idx = allData.findIndex(d => d.id == id);
-            if (idx !== -1) allData[idx] = { ...allData[idx], ...payload };
-        } else {
-            const newId = Date.now();
-            allData.unshift({ id: newId, ...payload });
-        }
+        try {
+            const res = await fetch(isEdit ? `${API_URL}/${id}` : API_URL, {
+                method: isEdit ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || (json.status && json.status !== 'success')) {
+                throw new Error(json.message || 'Gagal menyimpan data');
+            }
 
-        Swal.fire({
-            icon: 'success', text: 'Data berhasil disimpan', timer: 1500, showConfirmButton: false
-        }).then(() => {
-            hideForm();
-        });
+            // Sinkronkan state lokal agar UI langsung konsisten (list akan di-refresh dari API).
+            const saved = json.data;
+            if (isEdit) {
+                const idx = allData.findIndex(d => d.id == id);
+                if (idx !== -1) allData[idx] = { ...allData[idx], ...payload, ...(saved || {}) };
+            } else if (saved && saved.id !== undefined) {
+                allData.unshift(saved);
+            }
+
+            Swal.fire({
+                icon: 'success', text: 'Data berhasil disimpan', timer: 1500, showConfirmButton: false
+            }).then(() => {
+                hideForm();
+            });
+        } catch (err) {
+            console.error('Gagal menyimpan data:', err);
+            Swal.fire({ icon: 'error', text: 'Gagal menyimpan data: ' + err.message });
+        }
     }
 
     // -------------------------------------------------------------
@@ -660,11 +701,9 @@
         }).then((result) => {
             if (result.isConfirmed) {
                 const val = (result.value || '').toLowerCase();
-                const filtered = defaultData.filter(d => String(d[col] || '').toLowerCase().includes(val));
-                allData = filtered;
-                loadTableData();
+                // Filter pada data yang sedang ditampilkan (hasil API), tanpa refetch.
+                renderTable(allData.filter(d => String(d[col] || '').toLowerCase().includes(val)));
             } else if (result.dismiss === Swal.DismissReason.cancel) {
-                allData = [...defaultData];
                 loadTableData();
             }
         });

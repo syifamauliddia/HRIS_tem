@@ -177,6 +177,7 @@
     const userId = urlParams.get('user_id');
     const pathSegments = window.location.pathname.split('/');
     const recordId = pathSegments[pathSegments.length - 1] !== 'create' ? pathSegments[pathSegments.length - 1] : null;
+    let loadedData = {};
 
     document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('tanggal').value = tsDate;
@@ -189,6 +190,8 @@
                 const result = await res.json();
                 if (result.status === 'success') {
                     const data = result.data;
+                    loadedData = data;
+                    document.getElementById('tanggal').value = data.tanggal || tsDate;
                     document.getElementById('status').value = data.status || 'ATTEND';
                     document.getElementById('shift').value = data.shift || 'Reguler Pagi';
 
@@ -198,6 +201,8 @@
                     document.getElementById('checkin_long').value = data.checkin_long || '';
                     document.getElementById('checkin_address').value = data.checkin_address || '';
                     document.getElementById('catatan_in').value = data.catatan_in || '';
+                    document.getElementById('checkin_scope_1').checked = !!Number(data.checkin_on_scope);
+                    document.getElementById('checkin_scope_0').checked = !Number(data.checkin_on_scope);
 
                     document.getElementById('checkout_time').value = data.checkout_time || '';
                     document.getElementById('checkout_region').value = data.checkout_region || '';
@@ -205,6 +210,8 @@
                     document.getElementById('checkout_long').value = data.checkout_long || '';
                     document.getElementById('checkout_address').value = data.checkout_address || '';
                     document.getElementById('catatan_out').value = data.catatan_out || '';
+                    document.getElementById('checkout_scope_1').checked = !!Number(data.checkout_on_scope);
+                    document.getElementById('checkout_scope_0').checked = !Number(data.checkout_on_scope);
                 }
             } catch (err) {
                 console.error("Gagal load detail absensi:", err);
@@ -224,18 +231,25 @@
         if (!confirm.isConfirmed) return;
 
         const payload = {
+            ...loadedData,
             default_user_id: document.getElementById('default_user_id').value,
             tanggal: document.getElementById('tanggal').value,
             status: document.getElementById('status').value,
             shift: document.getElementById('shift').value,
             checkin_time: document.getElementById('checkin_time').value,
             checkin_region: document.getElementById('checkin_region').value,
+            checkin_lat: document.getElementById('checkin_lat').value,
+            checkin_long: document.getElementById('checkin_long').value,
             checkin_address: document.getElementById('checkin_address').value,
             catatan_in: document.getElementById('catatan_in').value,
+            checkin_on_scope: document.querySelector('input[name="checkin_on_scope"]:checked')?.value === '1',
             checkout_time: document.getElementById('checkout_time').value,
             checkout_region: document.getElementById('checkout_region').value,
+            checkout_lat: document.getElementById('checkout_lat').value,
+            checkout_long: document.getElementById('checkout_long').value,
             checkout_address: document.getElementById('checkout_address').value,
-            catatan_out: document.getElementById('catatan_out').value
+            catatan_out: document.getElementById('catatan_out').value,
+            checkout_on_scope: document.querySelector('input[name="checkout_on_scope"]:checked')?.value === '1'
         };
 
         const method = recordId ? 'PUT' : 'POST';

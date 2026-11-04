@@ -10,7 +10,31 @@
             window.location.href = '/login';
         }
     </script>
-    
+
+    <!-- Turbo Drive: navigasi sidebar Penilaian tanpa reload penuh -->
+    <script src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.23/dist/turbo.es2017-umd.js"></script>
+    <script>
+        if (window.Turbo && Turbo.session) {
+            Turbo.session.drive = false;
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.Turbo && Turbo.session) Turbo.session.drive = false;
+        });
+
+        window.registerPageInit = function (init) {
+            if (window.__appPageInitHandler) {
+                document.removeEventListener('turbo:load', window.__appPageInitHandler);
+            }
+            window.__appPageInitHandler = init;
+            if (window.Turbo) {
+                document.addEventListener('turbo:load', init);
+            } else {
+                document.addEventListener('DOMContentLoaded', init);
+            }
+        };
+    </script>
+    <meta name="turbo-cache-control" content="no-cache">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -21,10 +45,17 @@
         .nav-link:hover, .nav-link.active { background-color: #e9ecef; border-radius: 5px; }
         .sidebar [data-bs-toggle="collapse"] .fa-chevron-down { transition: transform 0.2s ease; }
         .sidebar [data-bs-toggle="collapse"][aria-expanded="false"] .fa-chevron-down { transform: rotate(-90deg); }
+        .turbo-progress-bar { visibility: hidden; }
     </style>
 </head>
 <body>
-    
+    @php
+        $isMasterPenilaian = request()->is('master-penilaian*');
+        $isPenilaian360 = request()->is('penilaian-360*');
+        $isPenilaianSummary = request()->is('penilaian-summary*');
+        $isPenilaianMenu = $isMasterPenilaian || $isPenilaian360 || $isPenilaianSummary;
+    @endphp
+
     <!-- SIDEBAR -->
     <div class="sidebar p-3 shadow-sm d-flex flex-column">
         <!-- Logo / App Title -->
@@ -123,37 +154,37 @@
 
             <!-- 3. Menu Utama: Penilaian -->
             <li class="nav-item mt-2">
-                <a class="nav-link text-dark d-flex justify-content-between align-items-center fw-bold" href="#penilaianMenu" data-bs-toggle="collapse" aria-expanded="false">
+                <a class="nav-link text-dark d-flex justify-content-between align-items-center fw-bold" href="#penilaianMenu" data-bs-toggle="collapse" aria-expanded="{{ $isPenilaianMenu ? 'true' : 'false' }}">
                     <span><i class="fas fa-arrow-right me-2 text-secondary"></i> Penilaian</span>
                     <i class="fas fa-chevron-down fa-xs text-muted"></i>
                 </a>
-                
-                <ul class="collapse list-unstyled ms-3 mt-1 border-start ps-2" id="penilaianMenu">
+
+                <ul class="collapse {{ $isPenilaianMenu ? 'show' : '' }} list-unstyled ms-3 mt-1 border-start ps-2" id="penilaianMenu">
                     <!-- Submenu Master -->
                     <li class="nav-item mt-1">
-                        <a class="nav-link text-dark d-flex justify-content-between align-items-center" href="#masterPenilaianMenu" data-bs-toggle="collapse" aria-expanded="false">
+                        <a class="nav-link text-dark d-flex justify-content-between align-items-center" href="#masterPenilaianMenu" data-bs-toggle="collapse" aria-expanded="{{ $isPenilaianMenu ? 'true' : 'false' }}">
                             <span><i class="fas fa-arrow-right me-2 text-secondary"></i> Master</span>
                             <i class="fas fa-chevron-down fa-xs text-muted"></i>
                         </a>
-                        <ul class="collapse list-unstyled ms-4 mt-1" id="masterPenilaianMenu">
-                            <li><a class="nav-link text-secondary" href="/master-penilaian"><i class="fas fa-user-cog me-2"></i>Komponen Penilaian Karyawan</a></li>
+                        <ul class="collapse {{ $isPenilaianMenu ? 'show' : '' }} list-unstyled ms-4 mt-1" id="masterPenilaianMenu">
+                            <li><a class="nav-link text-secondary" href="/master-penilaian" data-turbo-penilaian><i class="fas fa-user-cog me-2"></i>Komponen Penilaian Karyawan</a></li>
                         </ul>
                     </li>
 
                     <!-- Submenu Transaksi -->
                     <li class="nav-item mt-1">
-                        <a class="nav-link text-dark d-flex justify-content-between align-items-center" href="#transaksiPenilaianMenu" data-bs-toggle="collapse" aria-expanded="false">
+                        <a class="nav-link text-dark d-flex justify-content-between align-items-center" href="#transaksiPenilaianMenu" data-bs-toggle="collapse" aria-expanded="{{ $isPenilaianMenu ? 'true' : 'false' }}">
                             <span><i class="fas fa-arrow-right me-2 text-secondary"></i> Transaksi</span>
                             <i class="fas fa-chevron-down fa-xs text-muted"></i>
                         </a>
-                        <ul class="collapse list-unstyled ms-4 mt-1" id="transaksiPenilaianMenu">
-                            <li><a class="nav-link text-secondary" href="/penilaian-360"><i class="fas fa-users me-2"></i> Penilaian 360</a></li>
+                        <ul class="collapse {{ $isPenilaianMenu ? 'show' : '' }} list-unstyled ms-4 mt-1" id="transaksiPenilaianMenu">
+                            <li><a class="nav-link text-secondary" href="/penilaian-360" data-turbo-penilaian><i class="fas fa-users me-2"></i> Penilaian 360</a></li>
                         </ul>
                     </li>
 
                     <!-- TAMBAHAN BARU: Menu Summary & 9-Box di bawah Transaksi -->
                     <li class="nav-item mt-1">
-                        <a class="nav-link text-secondary" href="/penilaian-summary">
+                        <a class="nav-link text-secondary" href="/penilaian-summary" data-turbo-penilaian>
                             <i class="fas fa-chart-pie me-2"></i> Summary & 9-Box
                         </a>
                     </li>
@@ -338,8 +369,8 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" data-turbo-eval="false"></script>
+
     <script>
         // Fungsi Logout
         function logout() {
@@ -347,13 +378,79 @@
             window.location.href = '/login';
         }
 
-        // Fungsi Load Data User ke Sidebar
-        document.addEventListener('DOMContentLoaded', function() {
+        // Bersihkan interval & listener keydown halaman lama sebelum Turbo mengganti body.
+        if (!window.__turboLifecyclePatch) {
+            window.__turboLifecyclePatch = true;
+            (function () {
+                const trackedIntervals = new Set();
+                const nativeSetInterval = window.setInterval.bind(window);
+                const nativeClearInterval = window.clearInterval.bind(window);
+
+                window.setInterval = function (fn, delay) {
+                    const args = Array.prototype.slice.call(arguments, 2);
+                    const id = nativeSetInterval.apply(window, [fn, delay].concat(args));
+                    trackedIntervals.add(id);
+                    return id;
+                };
+                window.clearInterval = function (id) {
+                    trackedIntervals.delete(id);
+                    return nativeClearInterval(id);
+                };
+
+                const trackedKeydown = new Set();
+                const nativeAddEventListener = document.addEventListener.bind(document);
+                const nativeRemoveEventListener = document.removeEventListener.bind(document);
+
+                document.addEventListener = function (type, listener, options) {
+                    if (type === 'keydown' && listener) {
+                        trackedKeydown.add({ listener: listener, options: options });
+                    }
+                    return nativeAddEventListener(type, listener, options);
+                };
+
+                document.addEventListener('turbo:before-render', function () {
+                    trackedIntervals.forEach(function (id) { nativeClearInterval(id); });
+                    trackedIntervals.clear();
+                    trackedKeydown.forEach(function (item) {
+                        nativeRemoveEventListener('keydown', item.listener, item.options);
+                    });
+                    trackedKeydown.clear();
+                });
+            })();
+        }
+
+        // Navigasi SPA hanya untuk link sidebar Penilaian.
+        if (window.__penilaianSpaHandler) {
+            document.removeEventListener('click', window.__penilaianSpaHandler);
+        }
+        window.__penilaianSpaHandler = function (e) {
+            const link = e.target.closest('a[data-turbo-penilaian]');
+            if (!link) return;
+            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            if (link.target && link.target !== '_self') return;
+
+            const url = new URL(link.href, window.location.href);
+            if (url.origin !== window.location.origin) return;
+            e.preventDefault();
+
+            if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+
+            if (window.Turbo) {
+                Turbo.visit(url.href);
+            } else {
+                window.location.href = url.href;
+            }
+        };
+        document.addEventListener('click', window.__penilaianSpaHandler);
+
+        // Load data user ke sidebar (initial + setelah navigasi Turbo).
+        function updateSidebarUser() {
             const userStorage = localStorage.getItem('user');
-            if (userStorage) {
+            if (!userStorage) return;
+            try {
                 const userObj = JSON.parse(userStorage);
                 const userData = userObj.data || userObj;
-                
+
                 if (userData.name) {
                     const nameEl = document.getElementById('userName');
                     if (nameEl) nameEl.innerText = userData.name;
@@ -362,8 +459,17 @@
                     const roleEl = document.getElementById('userRole');
                     if (roleEl) roleEl.innerText = userData.role;
                 }
+            } catch (e) {
+                console.error('Gagal membaca data user:', e);
             }
-        });
+        }
+
+        updateSidebarUser();
+        if (window.__sidebarUserHandler) {
+            document.removeEventListener('turbo:load', window.__sidebarUserHandler);
+        }
+        window.__sidebarUserHandler = updateSidebarUser;
+        document.addEventListener('turbo:load', window.__sidebarUserHandler);
     </script>
     
     @stack('scripts')

@@ -58,12 +58,12 @@
                 </div>
                 <div class="col-md-4">
                     <select class="form-select" id="sub_id" disabled style="pointer-events: none; appearance: none; -webkit-appearance: none; -moz-appearance: none; background: #f8f9fa !important; color: #6c757d !important;">
-                        <option value="1">Pilih Sub SBU</option>
+                        <option value="">Pilih Sub SBU</option>
                     </select>
                 </div>
                 <div class="col-md-4">
                     <select class="form-select" id="branch_id" disabled style="pointer-events: none; appearance: none; -webkit-appearance: none; -moz-appearance: none; background: #f8f9fa !important; color: #6c757d !important;">
-                        <option value="1">Pilih Cabang</option>
+                        <option value="">Pilih Cabang</option>
                     </select>
                 </div>
             </div>
@@ -71,7 +71,7 @@
             <!-- Dropdown Atas (Row 2) -->
             <div class="row mb-3">
                 <div class="col-md-4">
-                    <select class="form-select text-dark bg-white select2" id="sbu_id" style="background-color: #ffffff !important;">
+                    <select class="form-select text-dark bg-white select2" id="level_id" style="background-color: #ffffff !important;">
                         <option value="" selected disabled>Pilih Level</option>
                         <option value="Direktur Holding">Direktur Holding</option>
                         <option value="GM/Wadir Holding">GM/Wadir Holding</option>
@@ -83,11 +83,11 @@
                 </div>
                 <div class="col-md-4">
                     <select class="form-select" id="division_id" disabled style="pointer-events: none; appearance: none; -webkit-appearance: none; -moz-appearance: none; background: #f8f9fa !important; color: #6c757d !important;">
-                        <option value="1">Information Technology</option>
+                        <option value="Information Technology">Information Technology</option>
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <select class="form-select text-dark bg-white select2" id="sbu_id" style="background-color: #ffffff !important;">
+                    <select class="form-select text-dark bg-white select2" id="tipe_penilaian" style="background-color: #ffffff !important;">
                         <option value="" selected disabled>Pilih Tipe Penilaian</option>
                         <option value="Performance KPI">Performance KPI</option>
                         <option value="Performance ReviewPI">Performance Review</option>
@@ -140,17 +140,36 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        
-        // 1. Inisialisasi Select2 untuk Dropdown Statis
-        $('.searchable-select').each(function () {
-            $(this).select2({
-                placeholder: $(this).data('placeholder'),
-                allowClear: true,
-                width: '100%',
-                minimumResultsForSearch: 0
+    function initMasterCreatePage() {
+        if (!document.getElementById('formMasterPenilaian')) return;
+
+        // Saat halaman dibuka lewat Turbo, script jQuery bisa belum selesai dimuat.
+        if (typeof window.jQuery !== 'function') {
+            var attempts = 0;
+            var timer = setInterval(function () {
+                attempts++;
+                if (typeof window.jQuery === 'function') {
+                    clearInterval(timer);
+                    initMasterCreatePage();
+                } else if (attempts >= 100) {
+                    clearInterval(timer);
+                    console.error('jQuery tidak tersedia; form tidak diinisialisasi.');
+                }
+            }, 100);
+            return;
+        }
+
+        // 1. Inisialisasi Select2 untuk Dropdown Statis (jika plugin tersedia)
+        if (window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function') {
+            $('.searchable-select').each(function () {
+                $(this).select2({
+                    placeholder: $(this).data('placeholder'),
+                    allowClear: true,
+                    width: '100%',
+                    minimumResultsForSearch: 0
+                });
             });
-        });
+        }
 
         // 2. Fungsi Membuat Templat Baris Sub-Detail
         function createSubDetailRow(subNumber = 1) {
@@ -186,7 +205,7 @@
                                     <td class="fw-bold ps-3 indicator-no">${indicatorNumber}.</td>
                                     <td><input type="text" class="form-control nama-indicator" placeholder="Masukkan Nama Assessment"></td>
                                     <td>
-                                        <select class="form-select text-muted">
+                                        <select class="form-select text-muted kategori-select">
                                             <option selected disabled>Pilih Kategori Penilai</option>
                                             <option value="SoftSkill">SoftSkill</option>
                                             <option value="HardSkill">HardSkill</option>
@@ -246,13 +265,15 @@
             
             $('#assessmentContainer').append($newBlock);
 
-            // Inisialisasi Select2 pada dropdown Kategori yang baru dibuat
-            $newBlock.find('.kategori-select').select2({
-                placeholder: "Pilih Kategori Penilai",
-                allowClear: true,
-                width: '100%',
-                minimumResultsForSearch: 0
-            });
+            // Inisialisasi Select2 pada dropdown Kategori yang baru dibuat (jika plugin tersedia)
+            if (window.jQuery.fn && typeof window.jQuery.fn.select2 === 'function') {
+                $newBlock.find('.kategori-select').select2({
+                    placeholder: "Pilih Kategori Penilai",
+                    allowClear: true,
+                    width: '100%',
+                    minimumResultsForSearch: 0
+                });
+            }
 
             updateNumbers();
         }
@@ -358,7 +379,12 @@
                 document.getElementById('formMasterPenilaian').requestSubmit();
             }
         });
+    }
 
-    });
+    if (window.registerPageInit) {
+        window.registerPageInit(initMasterCreatePage);
+    } else {
+        document.addEventListener('DOMContentLoaded', initMasterCreatePage);
+    }
 </script>
 @endpush

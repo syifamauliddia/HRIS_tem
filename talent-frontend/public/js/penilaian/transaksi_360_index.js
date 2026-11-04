@@ -5,7 +5,7 @@
 
   // true  = data disimpan di browser (localStorage), tanpa backend
   // false = pakai server.js + MySQL (http://localhost:3000)
-  const USE_DUMMY = true
+  const USE_DUMMY = false
 
   const STORE_KEY = 't360_rows'
   const DIVISI = ['Information Technology', 'HRD', 'Finance', 'Marketing']
